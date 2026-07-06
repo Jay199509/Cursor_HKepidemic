@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>香港疫情数据可视化大屏</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Microsoft YaHei", "SimHei", sans-serif;
+      background: #0c1629;
+      color: #c8d4e0;
+      overflow-x: hidden;
+    }
+    .dashboard-root {
+      max-width: 1920px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* 顶栏：标题 + 实时时钟 */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 22px 10px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+      background: rgba(8, 24, 48, 0.55);
+    }
+    .top-bar-brand h1 {
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: #f2f8ff;
+    }
+    .top-bar-tag {
+      margin-top: 4px;
+      font-size: 12px;
+      letter-spacing: 6px;
+      color: #6a9cbd;
+      text-transform: uppercase;
+    }
+    .top-bar-clock {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      color: #8ab4d9;
+      padding: 8px 14px;
+      border: 1px solid rgba(0, 180, 255, 0.15);
+      border-radius: 10px;
+      background: rgba(8, 24, 48, 0.55);
+    }
+    /* 核心指标区 */
+    .kpi-section {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px 20px 10px;
+    }
+    .kpi-card {
+      padding: 14px 16px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 180, 255, 0.15);
+      background: rgba(8, 24, 48, 0.55);
+      min-width: 0;
+    }
+    .kpi-card--primary {
+      border-color: rgba(0, 200, 255, 0.28);
+      background: rgba(8, 24, 48, 0.65);
+    }
+    .kpi-card-label {
+      display: block;
+      font-size: 12px;
+      color: #8aaabe;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .kpi-card-value {
+      font-size: clamp(22px, 2.4vw, 30px);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #e8f8ff;
+      line-height: 1.15;
+      word-break: break-all;
+    }
+    .kpi-card--primary .kpi-card-value {
+      color: #7fdcff;
+    }
+    .kpi-card-sub {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #a8c8e8;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .kpi-card-unit {
+      margin-left: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6a8aaa;
+    }
+    .kpi-meta-bar {
+      flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px 28px;
+      padding: 6px 20px 14px;
+      font-size: 12px;
+      color: #7a9ab8;
+      letter-spacing: 0.5px;
+      background: rgba(8, 24, 48, 0.35);
+      border-bottom: 1px solid rgba(0, 180, 255, 0.1);
+    }
+    .kpi-meta-bar strong {
+      color: #b8d4ec;
+      font-weight: 600;
+    }
+    /* 图表区：左略宽趋势 + 右地图；下排四宫格 */
+    .chart-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+      grid-template-rows: minmax(300px, 1.05fr) minmax(240px, 0.82fr) minmax(240px, 0.82fr);
+      gap: 14px 16px;
+      padding: 0 20px 22px;
+      min-height: 0;
+    }
+    .grid-trend { grid-column: 1; grid-row: 1; }
+    .grid-map { grid-column: 2; grid-row: 1; }
+    .grid-cum { grid-column: 1; grid-row: 2; }
+    .grid-month { grid-column: 2; grid-row: 2; }
+    .grid-daily { grid-column: 1; grid-row: 3; }
+    .grid-risk { grid-column: 2; grid-row: 3; }
+    .panel-head-sub {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 500;
+      color: #8ab4d9;
+      letter-spacing: 1px;
+    }
+    .panel {
+      border: 1px solid rgba(0, 180, 255, 0.15);
+      border-radius: 10px;
+      background: rgba(8, 24, 48, 0.55);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .panel-head {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px 11px 12px;
+      border-bottom: 1px solid rgba(0, 200, 255, 0.22);
+      background: rgba(6, 28, 52, 0.85);
+    }
+    .panel-head-accent {
+      width: 4px;
+      height: 20px;
+      border-radius: 2px;
+      background: #00b4d8;
+      flex-shrink: 0;
+    }
+    .panel-head-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #f0f8ff;
+      letter-spacing: 2px;
+    }
+    .panel-chart {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      padding: 10px 12px 14px;
+    }
+    @media (max-width: 1280px) {
+      .kpi-section { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 1100px) {
+      .chart-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      .grid-trend, .grid-map, .grid-cum, .grid-month, .grid-daily, .grid-risk {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      .panel-chart { min-height: 260px; }
+    }
+    @media (max-width: 720px) {
+      .kpi-section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .top-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-root">
+    <header class="top-bar">
+      <div class="top-bar-brand">
+        <h1>香港各区疫情数据</h1>
+        <p class="top-bar-tag">监控大屏 · MONITOR</p>
+      </div>
+      <div class="top-bar-clock" id="dash-clock" aria-live="polite">—</div>
+    </header>
+
+    <section class="kpi-section" aria-label="核心指标">
+      <div class="kpi-card kpi-card--primary">
+        <span class="kpi-card-label">趋势图 · 终点累计确诊</span>
+        <span class="kpi-card-value" id="kpi-cumulative">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-card-label">趋势图 · 终点每日新增</span>
+        <span class="kpi-card-value" id="kpi-daily-new">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-card-label">地图 · 各区现存合计</span>
+        <span class="kpi-card-value" id="kpi-active-total">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-card-label">地图 · 现存确诊最高的区</span>
+        <span class="kpi-card-sub" id="kpi-active-top-district">—</span>
+        <span class="kpi-card-value" id="kpi-active-top-value">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-card-label">月度柱状 · 最近一月新增</span>
+        <span class="kpi-card-sub" id="kpi-month-label">—</span>
+        <span class="kpi-card-value" id="kpi-month-new">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-card-label">横向条形 · 累计确诊第一位</span>
+        <span class="kpi-card-sub" id="kpi-cum-top-district">—</span>
+        <span class="kpi-card-value" id="kpi-cum-top-value">—</span>
+      </div>
+    </section>
+
+    <div class="kpi-meta-bar">
+      <span>最新统计日：<strong id="kpi-latest-date">—</strong></span>
+      <span>数据区间：<strong id="kpi-range-text">—</strong></span>
+      <span id="kpi-risk-line">饼图主体：<strong id="kpi-risk-text">—</strong></span>
+    </div>
+
+    <main class="chart-layout" id="chart-layout">
+      <section class="panel grid-trend">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">全港趋势 · 每日新增与累计确诊</h2>
+        </header>
+        <div id="chart-trend" class="panel-chart"></div>
+      </section>
+      <section class="panel grid-map">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">各地区现存确诊 · 地图热力</h2>
+          <span id="chart-active-sub" class="panel-head-sub"></span>
+        </header>
+        <div id="chart-active-dist" class="panel-chart"></div>
+      </section>
+      <section class="panel grid-cum">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">各区累计确诊 Top 10</h2>
+        </header>
+        <div id="chart-cum" class="panel-chart"></div>
+      </section>
+      <section class="panel grid-month">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">月度新增确诊汇总</h2>
+        </header>
+        <div id="chart-month" class="panel-chart"></div>
+      </section>
+      <section class="panel grid-daily">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">最新日 · 各区新增（前12区）</h2>
+        </header>
+        <div id="chart-daily" class="panel-chart"></div>
+      </section>
+      <section class="panel grid-risk">
+        <header class="panel-head">
+          <span class="panel-head-accent" aria-hidden="true"></span>
+          <h2 class="panel-head-title">最新日 · 风险等级分布</h2>
+        </header>
+        <div id="chart-risk" class="panel-chart"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const commonText = { color: '#b8c8d8' };
+    const axisLine = { lineStyle: { color: 'rgba(100,140,180,0.45)' } };
+    const splitLine = { lineStyle: { color: 'rgba(60,90,120,0.25)' } };
+
+    async function loadJson(url) {
+      var r = await fetch(url);
+      if (!r.ok) throw new Error(url + ' ' + r.status);
+      return r.json();
+    }
+
+    /** 地图 GeoJSON：优先走 Flask，失败则直连数据源（免静态路径配置问题） */
+    async function loadHkGeoJson() {
+      var urls = [
+        '/api/hk_districts_geo',
+        '/static/geo/hk_districts_full.json',
+        'https://geo.datav.aliyun.com/areas_v3/bound/810000_full.json',
+      ];
+      var lastErr;
+      for (var i = 0; i < urls.length; i++) {
+        try {
+          return await loadJson(urls[i]);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr;
+    }
+
+    function setText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function setOverview(o) {
+      if (!o.date_range) return;
+      setText('kpi-cumulative', o.latest_cumulative != null ? Number(o.latest_cumulative).toLocaleString() : '—');
+      setText('kpi-daily-new', o.latest_daily_new != null ? Number(o.latest_daily_new).toLocaleString() : '—');
+      setText('kpi-active-total', o.active_total != null ? Number(o.active_total).toLocaleString() : '—');
+      setText('kpi-active-top-district', o.active_top_district || '—');
+      setText('kpi-active-top-value', o.active_top_value != null ? Number(o.active_top_value).toLocaleString() : '—');
+      setText('kpi-month-label', o.latest_month ? '月份 ' + o.latest_month : '—');
+      setText('kpi-month-new', o.latest_month_new != null ? Number(o.latest_month_new).toLocaleString() : '—');
+      setText('kpi-cum-top-district', o.cum_top_district || '—');
+      setText('kpi-cum-top-value', o.cum_top_value != null ? Number(o.cum_top_value).toLocaleString() : '—');
+      setText('kpi-latest-date', o.latest_date || '—');
+      setText('kpi-range-text', o.date_range.start + ' ~ ' + o.date_range.end);
+      var riskEl = document.getElementById('kpi-risk-text');
+      var riskLine = document.getElementById('kpi-risk-line');
+      if (riskEl && o.risk_main_level) {
+        riskEl.textContent =
+          o.risk_main_level + '（' + (o.risk_main_pct != null ? o.risk_main_pct : '—') + '%）';
+        if (riskLine) riskLine.style.display = '';
+      } else {
+        if (riskEl) riskEl.textContent = '—';
+        if (riskLine) riskLine.style.display = 'none';
+      }
+    }
+
+    function tickDashClock() {
+      var el = document.getElementById('dash-clock');
+      if (!el) return;
+      el.textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+    }
+    setInterval(tickDashClock, 1000);
+    tickDashClock();
+
+    function initTrend(el, data) {
+      const chart = echarts.init(el, null, { renderer: 'canvas' });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        legend: { data: ['每日新增', '累计确诊'], textStyle: commonText, top: 10 },
+        grid: { left: 48, right: 56, top: 52, bottom: 28, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: data.dates,
+          axisLabel: { color: '#8aa4bc', rotate: 28, fontSize: 10 },
+          axisLine,
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: '每日新增',
+            nameTextStyle: { color: '#5cc8ff', fontSize: 11 },
+            axisLabel: { color: '#8aa4bc' },
+            axisLine,
+            splitLine,
+          },
+          {
+            type: 'value',
+            name: '累计确诊',
+            nameTextStyle: { color: '#ffb347', fontSize: 11 },
+            axisLabel: { color: '#8aa4bc' },
+            axisLine,
+            splitLine: { show: false },
+          },
+        ],
+        series: [
+          {
+            name: '每日新增',
+            type: 'line',
+            smooth: true,
+            symbol: 'none',
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(0, 200, 255, 0.45)' },
+                { offset: 1, color: 'rgba(0, 80, 120, 0.05)' },
+              ]),
+            },
+            lineStyle: { width: 2, color: '#00c8ff' },
+            data: data.daily_new,
+            yAxisIndex: 0,
+          },
+          {
+            name: '累计确诊',
+            type: 'line',
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 2, color: '#ff9f43' },
+            data: data.cumulative,
+            yAxisIndex: 1,
+          },
+        ],
+      });
+      window.addEventListener('resize', () => chart.resize());
+      return chart;
+    }
+
+    function initBarH(el, data) {
+      const chart = echarts.init(el);
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: 8, right: 24, top: 14, bottom: 10, containLabel: true },
+        xAxis: { type: 'value', axisLabel: { color: '#8aa4bc' }, axisLine, splitLine },
+        yAxis: {
+          type: 'category',
+          data: data.districts,
+          axisLabel: { color: '#8aa4bc', fontSize: 11 },
+          axisLine,
+        },
+        series: [
+          {
+            type: 'bar',
+            data: data.values,
+            itemStyle: {
+              borderRadius: [0, 4, 4, 0],
+              color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                { offset: 0, color: '#0066aa' },
+                { offset: 1, color: '#00c8f0' },
+              ]),
+            },
+          },
+        ],
+      });
+      window.addEventListener('resize', () => chart.resize());
+      return chart;
+    }
+
+    function initBarV(el, data) {
+      const chart = echarts.init(el);
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        grid: { left: 40, right: 16, top: 14, bottom: 48, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: data.months,
+          axisLabel: { color: '#8aa4bc', rotate: 32, fontSize: 10 },
+          axisLine,
+        },
+        yAxis: { type: 'value', axisLabel: { color: '#8aa4bc' }, axisLine, splitLine },
+        series: [
+          {
+            type: 'bar',
+            data: data.values,
+            itemStyle: {
+              borderRadius: [4, 4, 0, 0],
+              color: new echarts.graphic.LinearGradient(0, 1, 0, 0, [
+                { offset: 0, color: 'rgba(0,100,160,0.3)' },
+                { offset: 1, color: '#2ec7c9' },
+              ]),
+            },
+          },
+        ],
+      });
+      window.addEventListener('resize', () => chart.resize());
+      return chart;
+    }
+
+    function initBarDistrict(el, data) {
+      const chart = echarts.init(el);
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        grid: { left: 36, right: 12, top: 14, bottom: 72, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: data.districts,
+          axisLabel: { color: '#8aa4bc', rotate: 40, fontSize: 10 },
+          axisLine,
+        },
+        yAxis: { type: 'value', name: '新增', nameTextStyle: { color: '#7a9ab8' }, axisLabel: { color: '#8aa4bc' }, axisLine, splitLine },
+        series: [
+          {
+            type: 'bar',
+            data: data.values,
+            itemStyle: {
+              borderRadius: [4, 4, 0, 0],
+              color: '#4ecb73',
+            },
+          },
+        ],
+      });
+      window.addEventListener('resize', () => chart.resize());
+      return chart;
+    }
+
+    /** 各地区现存确诊：ECharts 地图 + 连续型 visualMap（分区热力着色） */
+    function initActiveMapHeat(el, geoJson, data) {
+      echarts.registerMap('HK_18', geoJson);
+      var vals = data.values && data.values.length ? data.values : [0];
+      var vmax = Math.max.apply(
+        null,
+        vals.map(function (v) {
+          return Number(v);
+        })
+      );
+      var mapData = data.districts.map(function (name, i) {
+        return { name: name, value: data.values[i] };
+      });
+      var chart = echarts.init(el, null, { renderer: 'canvas' });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: function (p) {
+            var v = p.value;
+            if (v == null || v === '') return p.name + '<br/>暂无数据';
+            return p.name + '<br/>现存确诊：' + Number(v).toLocaleString();
+          },
+        },
+        visualMap: {
+          type: 'continuous',
+          min: 0,
+          max: vmax > 0 ? vmax : 1,
+          left: 12,
+          bottom: '10%',
+          text: ['高', '低'],
+          calculable: true,
+          itemWidth: 14,
+          itemHeight: 130,
+          inRange: {
+            color: ['#0b2d4a', '#145a8d', '#1e88a8', '#5eb887', '#f2d349', '#ff6b35'],
+          },
+          textStyle: { color: '#8aa4bc', fontSize: 11 },
+        },
+        series: [
+          {
+            name: '现存确诊',
+            type: 'map',
+            map: 'HK_18',
+            roam: true,
+            scaleLimit: { min: 0.75, max: 5 },
+            zoom: 1.05,
+            selectedMode: false,
+            label: {
+              show: true,
+              fontSize: 9,
+              color: 'rgba(230, 245, 255, 0.92)',
+            },
+            emphasis: {
+              label: { show: true, color: '#fff', fontSize: 10, fontWeight: 'bold' },
+              itemStyle: {
+                areaColor: 'rgba(255, 200, 80, 0.55)',
+                borderColor: '#fff',
+                borderWidth: 1,
+              },
+            },
+            itemStyle: {
+              borderColor: 'rgba(0, 212, 255, 0.55)',
+              borderWidth: 1,
+              shadowBlur: 6,
+              shadowColor: 'rgba(0, 40, 80, 0.45)',
+            },
+            data: mapData,
+          },
+        ],
+      });
+      window.addEventListener('resize', function () {
+        chart.resize();
+      });
+      return chart;
+    }
+
+    function initPie(el, data) {
+      const chart = echarts.init(el);
+      const pieData = data.levels.map((name, i) => ({
+        name,
+        value: data.values[i],
+      }));
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        legend: {
+          orient: 'vertical',
+          right: 8,
+          top: 'middle',
+          textStyle: { color: '#8aa4bc', fontSize: 11 },
+        },
+        series: [
+          {
+            type: 'pie',
+            radius: ['38%', '68%'],
+            center: ['42%', '52%'],
+            avoidLabelOverlap: true,
+            itemStyle: { borderRadius: 6, borderColor: '#0a1628', borderWidth: 2 },
+            label: { color: '#c8d4e0', fontSize: 11 },
+            data: pieData,
+            color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452'],
+          },
+        ],
+      });
+      window.addEventListener('resize', () => chart.resize());
+      return chart;
+    }
+
+    (async function () {
+      try {
+        const [ov, trend, geoJson, activeDist, cum, month, daily, risk] =
+          await Promise.all([
+            loadJson('/api/overview'),
+            loadJson('/api/trend'),
+            loadHkGeoJson(),
+            loadJson('/api/district_active_distribution'),
+            loadJson('/api/district_cumulative_top'),
+            loadJson('/api/monthly_new'),
+            loadJson('/api/district_daily_latest'),
+            loadJson('/api/risk_distribution'),
+          ]);
+        setOverview(ov);
+        initTrend(document.getElementById('chart-trend'), trend);
+        var subEl = document.getElementById('chart-active-sub');
+        if (subEl && activeDist.stat_date) {
+          subEl.textContent = '统计日：' + activeDist.stat_date;
+        }
+        initActiveMapHeat(
+          document.getElementById('chart-active-dist'),
+          geoJson,
+          activeDist
+        );
+        initBarH(document.getElementById('chart-cum'), cum);
+        initBarV(document.getElementById('chart-month'), month);
+        initBarDistrict(document.getElementById('chart-daily'), daily);
+        if (risk.levels && risk.levels.length) {
+          initPie(document.getElementById('chart-risk'), risk);
+        } else {
+          const el = document.getElementById('chart-risk');
+          el.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:center;min-height:160px;height:100%;color:#6a8aaa;font-size:13px;">暂无风险等级字段数据</div>';
+        }
+      } catch (e) {
+        console.error(e);
+        var layout = document.getElementById('chart-layout');
+        if (layout) {
+          layout.innerHTML =
+            '<p style="padding:40px;color:#ff6b6b;grid-column:1/-1;">加载失败：' +
+            e.message +
+            '</p>';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
