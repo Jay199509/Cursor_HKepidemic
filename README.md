@@ -4,7 +4,7 @@
 
 ### 呈现结果：
 
-![](D:\360MoveData\Users\Administrator\Documents\GitHub\Cursor_HKepidemic\assets\confirmed_trends.png)
+![](assets/confirmed_trends.png)
 
 
 
@@ -22,5 +22,5 @@ Flask+Echarts 生成疫情数据大屏
 
 ### 呈现结果：
 
-![](D:\360MoveData\Users\Administrator\Documents\GitHub\Cursor_HKepidemic\assets\Epidemic.jpg)
+![](assets/Epidemic.jpg)
 
