@@ -1,0 +1,196 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Microsoft YaHei", "SimHei", sans-serif;
+  background: #0c1629;
+  color: #c8d4e0;
+  overflow-x: hidden;
+}
+.dashboard-root {
+  max-width: 1920px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+/* 顶栏：标题 + 实时钟 */
+.top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px 10px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(8, 24, 48, 0.55);
+}
+.top-bar-brand h1 {
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #f2f8ff;
+}
+.top-bar-tag {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: #6a9cbd;
+  text-transform: uppercase;
+}
+.top-bar-clock {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #8ab4d9;
+  padding: 8px 14px;
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(8, 24, 48, 0.55);
+}
+/* 核心指标区 */
+.kpi-section {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px 10px;
+}
+.kpi-card {
+  padding: 14px 16px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  background: rgba(8, 24, 48, 0.55);
+  min-width: 0;
+}
+.kpi-card--primary {
+  border-color: rgba(0, 200, 255, 0.28);
+  background: rgba(8, 24, 48, 0.65);
+}
+.kpi-card-label {
+  display: block;
+  font-size: 12px;
+  color: #8aaabe;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.kpi-card-value {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #e8f8ff;
+  line-height: 1.15;
+  word-break: break-all;
+}
+.kpi-card--primary .kpi-card-value {
+  color: #7fdcff;
+}
+.kpi-card-sub {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a8c8e8;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.kpi-card-unit {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6a8aaa;
+}
+.kpi-meta-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 28px;
+  padding: 6px 20px 14px;
+  font-size: 12px;
+  color: #7a9ab8;
+  letter-spacing: 0.5px;
+  background: rgba(8, 24, 48, 0.35);
+  border-bottom: 1px solid rgba(0, 180, 255, 0.1);
+}
+.kpi-meta-bar strong {
+  color: #b8d4ec;
+  font-weight: 600;
+}
+/* 图表区：左侧趋势 + 右侧地图；下排四宫格 */
+.chart-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+  grid-template-rows: minmax(300px, 1.05fr) minmax(240px, 0.82fr) minmax(240px, 0.82fr);
+  gap: 14px 16px;
+  padding: 0 20px 22px;
+  min-height: 0;
+}
+.grid-trend { grid-column: 1; grid-row: 1; }
+.grid-map { grid-column: 2; grid-row: 1; }
+.grid-cum { grid-column: 1; grid-row: 2; }
+.grid-month { grid-column: 2; grid-row: 2; }
+.grid-daily { grid-column: 1; grid-row: 3; }
+.grid-risk { grid-column: 2; grid-row: 3; }
+.panel-head-sub {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8ab4d9;
+  letter-spacing: 1px;
+}
+.panel {
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(8, 24, 48, 0.55);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.panel-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px 11px 12px;
+  border-bottom: 1px solid rgba(0, 200, 255, 0.22);
+  background: rgba(6, 28, 52, 0.85);
+}
+.panel-head-accent {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  background: #00b4d8;
+  flex-shrink: 0;
+}
+.panel-head-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f0f8ff;
+  letter-spacing: 2px;
+}
+.panel-chart {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 10px 12px 14px;
+}
+@media (max-width: 1280px) {
+  .kpi-section { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .chart-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .grid-trend, .grid-map, .grid-cum, .grid-month, .grid-daily, .grid-risk {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .panel-chart { min-height: 260px; }
+}
+@media (max-width: 720px) {
+  .kpi-section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+}

@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib import font_manager
+from pathlib import Path
 
 # 优先选择系统中真实存在的中文字体，避免中文变方块/乱码
 preferred_fonts = [
@@ -19,10 +20,14 @@ chosen = next((f for f in preferred_fonts if f in available), "DejaVu Sans")
 plt.rcParams["font.sans-serif"] = [chosen]
 plt.rcParams["axes.unicode_minus"] = False
 
+base_dir = Path(__file__).resolve().parent
+output_path = base_dir / "static" / "images" / "confirmed_trends.png"
+output_path.parent.mkdir(parents=True, exist_ok=True)
+
 # 读取 Excel
 df = pd.read_excel("香港各区疫情数据_20250322.xlsx")
 
-# 该表的列名在某些 Windows 终端会显示乱码，这里用“列位置”来稳妥取数：
+# 这张表的列名在某些 Windows 终端里会显示成乱码，这里用“列位置”来稳定取数
 # 0: 日期, 1: 地区, 2: 每日新增确诊, 3: 累计确诊
 date_col = df.columns[0]
 daily_new_col = df.columns[2]
@@ -42,16 +47,14 @@ daily = (
     )
 )
 
-# 日期列转 datetime，横坐标才能正确做稀疏刻度
+# 日期列转 datetime，横坐标才能正常做时间刻度
 daily["日期"] = pd.to_datetime(daily["日期"], errors="coerce")
 daily = daily.dropna(subset=["日期"]).sort_values("日期")
-
-print(daily.head(20).to_string(index=False))
 
 # 折线图呈现
 fig, ax1 = plt.subplots(figsize=(13, 6))
 
-# 左轴：每日新增（更能体现波动）
+# 左轴：每日新增
 ax1.plot(
     daily["日期"],
     daily["每日新增确诊"],
@@ -63,7 +66,7 @@ ax1.set_xlabel("日期")
 ax1.set_ylabel("每日新增确诊")
 ax1.grid(True, linestyle="--", alpha=0.35)
 
-# 右轴：累计（数量级大，单独轴不压扁波动）
+# 右轴：累计
 ax2 = ax1.twinx()
 ax2.plot(
     daily["日期"],
@@ -82,7 +85,7 @@ for label in ax1.get_xticklabels():
     label.set_rotation(30)
     label.set_ha("right")
 
-fig.suptitle("确诊病例数趋势（每日新增 vs 累计）")
+fig.suptitle("确诊病例数趋势图（每日新增 vs 累计）")
 
 # 合并两条线的图例
 lines1, labels1 = ax1.get_legend_handles_labels()
@@ -90,5 +93,5 @@ lines2, labels2 = ax2.get_legend_handles_labels()
 ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
 
 plt.tight_layout()
-plt.savefig("confirmed_trends.png", dpi=150)
+plt.savefig(output_path, dpi=150)
 plt.show()
